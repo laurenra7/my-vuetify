@@ -1,0 +1,58 @@
+apply plugin: 'java'
+
+def jsonFile = file("${projectDir}/package.json")
+def parsedJson = new groovy.json.JsonSlurper().parseText(jsonFile.text)
+//project.version = parsedJson.version
+project.version = parsedJson.version + '-SNAPSHOT'
+
+println("group = ${group}")
+println("project.name = ${project.name}")
+println("project.version = ${project.version}")
+println("rootProject.name = ${rootProject.name}")
+
+jar {
+    archiveBaseName = project.name
+    from '.'
+    into "META-INF/resources/webjars/${project.name}/${project.version}"
+    include 'META-INF'
+    include 'dist/*'
+    exclude "dist/demo.html"
+    exclude "dist/${project.name}.js"
+    exclude "dist/${project.name}.js.map"
+    exclude "dist/${project.name}.min.js.map"
+}
+
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+publishToMavenLocal.dependsOn assemble
+
+publishing {
+
+    publications {
+        webJar(MavenPublication) {
+            artifact file("$buildDir/libs/${project.name}-${project.version}.jar")
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        maven {
+            name = "byu"
+
+            def releaseRepoUrl   = "https://developer.byu.edu/maven2/content/repositories/byu-release-repo"
+            def releaseRepoUser  = "$byuMavenReleaseUser"
+            def releaseRepoPass  = "$byuMavenReleasePass"
+
+            def snapshotRepoUrl  = "https://developer.byu.edu/maven2/content/repositories/byu-snapshot-repo"
+            def snapshotRepoUser = "$byuMavenSnapshotUser"
+            def snapshotRepoPass = "$byuMavenSnapshotPass"
+
+            url = project.version.endsWith('SNAPSHOT') ? snapshotRepoUrl : releaseRepoUrl
+            credentials {
+                username = project.version.endsWith('SNAPSHOT') ? snapshotRepoUser : releaseRepoUser
+                password = project.version.endsWith('SNAPSHOT') ? snapshotRepoPass : releaseRepoPass
+            }
+        }
+    }
+}
